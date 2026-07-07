@@ -1,0 +1,351 @@
+{
+  "info": {
+    "name": "HRMS App API (TrackPunch)",
+    "description": "TrackPunch / HRMS REST API (Node + Express + PostgreSQL).\n\nLive base URL: https://apps.deodap.info/hrms-app/api\n\nUsage:\n1. Run **Auth > Login** with a valid employee `code`/`email`/`phone` + `password`. The token is auto-saved to the `token` collection variable.\n2. All other requests inherit Bearer `{{token}}` automatically.\n\nResponse envelope is Laravel-style: `{ status, message, data }`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://apps.deodap.info/hrms-app/api", "type": "string" },
+    { "key": "token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+            "description": "Liveness probe. Public."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res && res.data && res.data.token) {",
+                  "  pm.collectionVariables.set('token', res.data.token);",
+                  "  console.log('Saved token to {{token}}');",
+                  "}",
+                  "pm.test('login ok', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"EMPLOYEE_CODE\",\n  \"password\": \"PASSWORD\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/login", "host": ["{{baseUrl}}"], "path": ["login"] },
+            "description": "Authenticate by `code`, `email`, `phone`, or `username` + `password`. Issues a Sanctum-compatible token (auto-saved to `{{token}}`)."
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/me", "host": ["{{baseUrl}}"], "path": ["me"] },
+            "description": "Current authenticated employee."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/logout", "host": ["{{baseUrl}}"], "path": ["logout"] },
+            "description": "Revoke the current token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/profile", "host": ["{{baseUrl}}"], "path": ["profile"] }
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"name@example.com\",\n  \"dob\": \"1995-06-25\",\n  \"gender\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/profile/update", "host": ["{{baseUrl}}"], "path": ["profile", "update"] },
+            "description": "All fields optional. `gender`: 0 or 1. `dob`: ISO date."
+          }
+        },
+        {
+          "name": "Accept terms",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/profile/accept-terms", "host": ["{{baseUrl}}"], "path": ["profile", "accept-terms"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Punch",
+      "item": [
+        {
+          "name": "Punch (in/out)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"in\",\n  \"latitude\": 23.0225,\n  \"longitude\": 72.5714,\n  \"image\": \"<base64 selfie, optional>\",\n  \"note\": \"\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/punch", "host": ["{{baseUrl}}"], "path": ["punch"] },
+            "description": "`type` is \"in\" or \"out\" (optional; server can auto-toggle). lat/long optional. `image` base64 optional."
+          }
+        },
+        {
+          "name": "Punch status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/punch/status", "host": ["{{baseUrl}}"], "path": ["punch", "status"] }
+          }
+        },
+        {
+          "name": "Punch history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/punch/history?month=2026-06",
+              "host": ["{{baseUrl}}"],
+              "path": ["punch", "history"],
+              "query": [
+                { "key": "month", "value": "2026-06" },
+                { "key": "from", "value": "2026-06-01", "disabled": true },
+                { "key": "to", "value": "2026-06-30", "disabled": true }
+              ]
+            },
+            "description": "Filter by `month` (YYYY-MM) or `from`/`to` (YYYY-MM-DD)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tracking",
+      "item": [
+        {
+          "name": "Tracking types",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/tracking-types", "host": ["{{baseUrl}}"], "path": ["tracking-types"] },
+            "description": "Public list of tracking types."
+          }
+        },
+        {
+          "name": "Create tracking",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tracking_type_id\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tracking", "host": ["{{baseUrl}}"], "path": ["tracking"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leaves",
+      "item": [
+        {
+          "name": "List leaves",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/leaves", "host": ["{{baseUrl}}"], "path": ["leaves"] }
+          }
+        },
+        {
+          "name": "Create leave",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leave_date_from\": \"2026-07-01\",\n  \"leave_date_to\": \"2026-07-02\",\n  \"reason_for_leave\": \"Personal\",\n  \"total_leave_days\": \"2\",\n  \"leave_time_from\": \"\",\n  \"leave_time_to\": \"\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/leaves", "host": ["{{baseUrl}}"], "path": ["leaves"] }
+          }
+        },
+        {
+          "name": "Get leave by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/leaves/1", "host": ["{{baseUrl}}"], "path": ["leaves", "1"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Work Reports",
+      "item": [
+        {
+          "name": "List work reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/work-reports?date=2026-06-25",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-reports"],
+              "query": [
+                { "key": "date", "value": "2026-06-25" },
+                { "key": "month", "value": "2026-06", "disabled": true }
+              ]
+            },
+            "description": "Filter by `date` (YYYY-MM-DD) or `month` (YYYY-MM)."
+          }
+        },
+        {
+          "name": "Create work report",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-06-25\",\n  \"task\": \"Worked on X\",\n  \"outcome\": \"Completed\",\n  \"wr_time\": 1,\n  \"report_type\": \"\",\n  \"screen_shot\": \"\",\n  \"remarks\": \"\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/work-reports", "host": ["{{baseUrl}}"], "path": ["work-reports"] },
+            "description": "`wr_time` is an hourly time-slot id (see Work report times)."
+          }
+        },
+        {
+          "name": "Work report times",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/work-report-times", "host": ["{{baseUrl}}"], "path": ["work-report-times"] },
+            "description": "Hourly time slots used by `wr_time`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/notifications", "host": ["{{baseUrl}}"], "path": ["notifications"] }
+          }
+        },
+        {
+          "name": "Mark notification read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/notifications/1/read", "host": ["{{baseUrl}}"], "path": ["notifications", "1", "read"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lookups",
+      "item": [
+        {
+          "name": "Departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/departments", "host": ["{{baseUrl}}"], "path": ["departments"] }
+          }
+        },
+        {
+          "name": "Designations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/designations", "host": ["{{baseUrl}}"], "path": ["designations"] }
+          }
+        },
+        {
+          "name": "Shifts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/shifts", "host": ["{{baseUrl}}"], "path": ["shifts"] }
+          }
+        },
+        {
+          "name": "Work locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/work-locations", "host": ["{{baseUrl}}"], "path": ["work-locations"] }
+          }
+        },
+        {
+          "name": "Holidays",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/holidays", "host": ["{{baseUrl}}"], "path": ["holidays"] }
+          }
+        },
+        {
+          "name": "Policies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/policies", "host": ["{{baseUrl}}"], "path": ["policies"] }
+          }
+        },
+        {
+          "name": "Accept policy",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/policies/1/accept", "host": ["{{baseUrl}}"], "path": ["policies", "1", "accept"] }
+          }
+        }
+      ]
+    }
+  ]
+}

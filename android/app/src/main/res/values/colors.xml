@@ -1,0 +1,5 @@
+<resources>
+    <!-- Window background — white, so app launch and native screen transitions
+         show white (matching the app's screens) instead of a cream flash. -->
+    <color name="app_background">#FFFFFF</color>
+</resources>
