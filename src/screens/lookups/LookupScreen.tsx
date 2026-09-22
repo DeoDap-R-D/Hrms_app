@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import { GradientHeader, Card, EmptyState, Loading, FadeInView } from '../../components/ui';
-import { useTheme, useThemedStyles } from '../../theme';
-import type { Theme } from '../../theme';
+import { FocusAwareStatusBar } from '../../components/ui';
+import { ref } from '../../theme/refColors';
 import * as svc from '../../api/services';
 import type { LookupItem, Holiday } from '../../api/types';
 import { lookupName, formatDate, shiftTiming } from '../../utils/format';
@@ -13,12 +13,20 @@ import type { AppStackParamList, LookupKind } from '../../navigation/types';
 
 type R = RouteProp<AppStackParamList, 'Lookup'>;
 
-const CONFIG: Record<LookupKind, { icon: string; fetch: () => Promise<LookupItem[]> }> = {
-  departments: { icon: 'office-building-outline', fetch: svc.departments },
-  designations: { icon: 'card-account-details-outline', fetch: svc.designations },
-  shifts: { icon: 'clock-time-four-outline', fetch: svc.shifts },
-  'work-locations': { icon: 'map-marker-outline', fetch: svc.workLocations },
-  holidays: { icon: 'beach', fetch: svc.holidays },
+const CONFIG: Record<LookupKind, { icon: string; empty: string }> = {
+  departments: { icon: 'office-building-outline', empty: 'office-building-outline' },
+  designations: { icon: 'card-account-details-outline', empty: 'card-account-details-outline' },
+  shifts: { icon: 'clock-time-four-outline', empty: 'clock-outline' },
+  'work-locations': { icon: 'map-marker-outline', empty: 'map-marker-off-outline' },
+  holidays: { icon: 'calendar-star', empty: 'calendar-blank-outline' },
+};
+
+const FETCH: Record<LookupKind, () => Promise<LookupItem[]>> = {
+  departments: svc.departments,
+  designations: svc.designations,
+  shifts: svc.shifts,
+  'work-locations': svc.workLocations,
+  holidays: svc.holidays,
 };
 
 export default function LookupScreen() {
@@ -27,8 +35,6 @@ export default function LookupScreen() {
   const { kind, title } = route.params;
   const config = CONFIG[kind];
 
-  const { colors } = useTheme();
-  const styles = useThemedStyles(makeStyles);
   const [items, setItems] = useState<LookupItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [firstLoad, setFirstLoad] = useState(true);
@@ -36,14 +42,14 @@ export default function LookupScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setItems(await config.fetch());
+      setItems(await FETCH[kind]());
     } catch {
       setItems([]);
     } finally {
       setLoading(false);
       setFirstLoad(false);
     }
-  }, [config]);
+  }, [kind]);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,31 +57,40 @@ export default function LookupScreen() {
     }, [load]),
   );
 
-  const renderItem = ({ item, index }: { item: LookupItem; index: number }) => {
+  const renderItem = ({ item }: { item: LookupItem }) => {
     const date = (item as Holiday).date || (item as Holiday).holiday_date;
+    const sub =
+      kind === 'holidays' && date ? formatDate(date) : kind === 'shifts' ? shiftTiming(item) : null;
     return (
-      <FadeInView index={index}>
-        <Card style={styles.item}>
-          <View style={styles.row}>
-            <View style={styles.iconChip}>
-              <Icon name={config.icon} size={20} color={colors.primary} />
-            </View>
-            <View style={styles.flex}>
-              <Text style={styles.title}>{lookupName(item)}</Text>
-              {kind === 'holidays' && date ? <Text style={styles.sub}>{formatDate(date)}</Text> : null}
-              {kind === 'shifts' && shiftTiming(item) ? <Text style={styles.sub}>{shiftTiming(item)}</Text> : null}
-            </View>
-          </View>
-        </Card>
-      </FadeInView>
+      <View style={styles.item}>
+        <View style={styles.iconTile}>
+          <Icon name={config.icon} size={22} color={ref.blue} />
+        </View>
+        <View style={styles.itemText}>
+          <Text style={styles.itemTitle}>{lookupName(item)}</Text>
+          {sub ? <Text style={styles.itemSub}>{sub}</Text> : null}
+        </View>
+      </View>
     );
   };
 
   return (
     <View style={styles.root}>
-      <GradientHeader title={title} onBack={() => navigation.goBack()} />
+      <FocusAwareStatusBar barStyle="dark-content" />
+
+      <SafeAreaView edges={['top']} style={styles.topBar}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Icon name="arrow-left" size={24} color={ref.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{title}</Text>
+        </View>
+      </SafeAreaView>
+
       {firstLoad && loading ? (
-        <Loading message="Loading…" fullscreen={false} />
+        <View style={styles.center}>
+          <ActivityIndicator color={ref.blue} size="large" />
+        </View>
       ) : (
         <FlatList
           data={items}
@@ -83,30 +98,52 @@ export default function LookupScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} colors={[colors.primary]} />}
-          ListEmptyComponent={<EmptyState icon="folder-open-outline" title={`No ${title.toLowerCase()}`} message="Nothing to show here yet." />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} colors={[ref.blue]} tintColor={ref.blue} />}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <Icon name={config.empty} size={40} color={ref.blue} />
+              </View>
+              <Text style={styles.emptyTitle}>No {title.toLowerCase()}</Text>
+              <Text style={styles.emptySub}>There are no {title.toLowerCase()} to show right now.</Text>
+            </View>
+          }
         />
       )}
     </View>
   );
 }
 
-const makeStyles = (t: Theme) =>
-  StyleSheet.create({
-    root: { flex: 1, backgroundColor: t.colors.bg },
-    flex: { flex: 1 },
-    listContent: { padding: t.spacing.lg, paddingBottom: t.spacing.xxxl, flexGrow: 1 },
-    item: { marginBottom: t.spacing.md },
-    row: { flexDirection: 'row', alignItems: 'center' },
-    iconChip: {
-      width: 40,
-      height: 40,
-      borderRadius: t.radius.md,
-      backgroundColor: t.colors.primarySoft,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: t.spacing.md,
-    },
-    title: { fontSize: 15, fontWeight: '600', color: t.colors.text },
-    sub: { fontSize: 13, color: t.colors.textMuted, marginTop: 2 },
-  });
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: ref.pageBg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  topBar: { backgroundColor: '#FFFFFF' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: ref.text, marginLeft: 20, letterSpacing: -0.3 },
+
+  listContent: { padding: 16, paddingBottom: 32, flexGrow: 1 },
+
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  iconTile: { width: 44, height: 44, borderRadius: 12, backgroundColor: ref.blueSoft, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  itemText: { flex: 1 },
+  itemTitle: { fontSize: 16, fontWeight: '700', color: ref.text, letterSpacing: -0.2 },
+  itemSub: { fontSize: 13.5, color: ref.textMuted, marginTop: 3, fontWeight: '500' },
+
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100, paddingHorizontal: 32 },
+  emptyIcon: { width: 90, height: 90, borderRadius: 45, backgroundColor: ref.blueSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: ref.text, textTransform: 'capitalize' },
+  emptySub: { fontSize: 14, color: ref.textMuted, textAlign: 'center', marginTop: 8, lineHeight: 20 },
+});
