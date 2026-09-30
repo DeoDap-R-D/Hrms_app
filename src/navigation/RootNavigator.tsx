@@ -6,7 +6,8 @@ import { AppState } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme';
 import { getOnboardingSeen, setOnboardingSeen } from '../api/storage';
-import { initNotifications, syncReminders, registerForegroundHandler } from '../utils/notifications';
+import { initNotifications, syncReminders } from '../utils/notifications';
+import { initPush } from '../utils/push';
 import type { AppStackParamList } from './types';
 
 import AppTabs from './AppTabs';
@@ -66,17 +67,22 @@ export default function RootNavigator() {
     if (!isAuthenticated) return;
     // Request notification permission ONCE here (foreground, just after auth);
     // foreground re-syncs below only schedule and never re-request permission.
-    initNotifications();
+    // Get the Firebase token once permission has been requested.
+    let stopPush = () => {};
+    let cancelled = false;
+    initNotifications().finally(() => {
+      if (!cancelled) stopPush = initPush();
+    });
     syncReminders();
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active') syncReminders();
     });
-    return () => sub.remove();
+    return () => {
+      cancelled = true;
+      sub.remove();
+      stopPush();
+    };
   }, [isAuthenticated]);
-
-  // Handle reminders delivered while the app is in the foreground (record them
-  // for the in-app Notifications screen / suppress if already punched).
-  useEffect(() => registerForegroundHandler(), []);
 
   const navTheme = useMemo(() => {
     const base = isDark ? DarkTheme : DefaultTheme;

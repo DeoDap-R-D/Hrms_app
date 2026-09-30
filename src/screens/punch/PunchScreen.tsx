@@ -9,7 +9,6 @@ import type { Theme } from '../../theme';
 import * as svc from '../../api/services';
 import { getErrorMessage } from '../../api/client';
 import { fetchLocation, Coords } from '../../utils/location';
-import { onCheckedIn, onCheckedOut } from '../../utils/notifications';
 import type { AppStackParamList } from '../../navigation/types';
 
 type R = RouteProp<AppStackParamList, 'Punch'>;
@@ -45,9 +44,6 @@ export default function PunchScreen() {
         longitude: coords?.longitude,
         note: note.trim() || undefined,
       });
-      // Clear today's reminder now that the punch is done.
-      if (isIn) onCheckedIn();
-      else onCheckedOut();
       Alert.alert(
         isIn ? 'Punched In' : 'Punched Out',
         isIn ? 'Have a productive day!' : 'See you next time!',

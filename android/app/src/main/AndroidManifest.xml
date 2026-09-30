@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -6,7 +7,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Exact alarms for on-time attendance reminders. USE_EXACT_ALARM is
+    <!-- Keeps the CPU awake while a due reminder checks the punch status. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />    <!-- Exact alarms for on-time attendance reminders. USE_EXACT_ALARM is
          auto-granted at install (no runtime prompt) and is the correct
          permission for a reminder/alarm app on Android 13+. -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
@@ -36,5 +38,33 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- Daily attendance reminders: fires at the exact time, checks the punch
+           status, and only notifies if the punch is missing. Also re-arms the
+           alarms after reboot, app update and clock/timezone changes. -->
+      <receiver
+        android:name=".reminders.ReminderReceiver"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+          <action android:name="android.intent.action.TIME_SET" />
+          <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        </intent-filter>
+      </receiver>
+
+      <!-- Firebase: our service replaces React Native Firebase's default one so
+           attendance-reminder pushes are checked against the punch status
+           before being shown. All other messages are passed through unchanged. -->
+      <service
+        android:name="io.invertase.firebase.messaging.ReactNativeFirebaseMessagingService"
+        tools:node="remove" />
+      <service
+        android:name=".reminders.ReminderMessagingService"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent-filter>
+      </service>
     </application>
 </manifest>

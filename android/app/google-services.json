@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "113333177382",
+    "project_id": "notificaton-dd",
+    "storage_bucket": "notificaton-dd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:113333177382:android:c340357f795b59bf2e6ae7",
+        "android_client_info": {
+          "package_name": "com.hrmsapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVqEqvrxtBhG5SZLKWIyj8yjwahqv_zXA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

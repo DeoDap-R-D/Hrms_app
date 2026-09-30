@@ -18,6 +18,7 @@ import ZoomableView from '../../components/ZoomableView';
 import { ref } from '../../theme/refColors';
 import { useAuth } from '../../context/AuthContext';
 import { displayName } from '../../utils/format';
+import { isLateCheckIn } from '../../utils/stats';
 import type { PunchRecord } from '../../api/types';
 import type { AppStackParamList } from '../../navigation/types';
 import {
@@ -186,7 +187,7 @@ export default function ReportViewerScreen() {
 
   const presentN = rows.filter(r => statusOf(r) === 'P' || r.intime).length;
   const absentN = rows.filter(r => statusOf(r) === 'A').length;
-  const lateN = rows.filter(r => !!r.late_in && durVal(r.late_in) !== '00:00').length;
+  const lateN = rows.filter(isLateCheckIn).length;
   const halfN = rows.filter(r => statusOf(r) === 'HD').length;
   const hasData = rows.length > 0;
 

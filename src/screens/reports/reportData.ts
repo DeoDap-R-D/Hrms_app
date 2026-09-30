@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import * as svc from '../../api/services';
 import type { Employee, PunchRecord } from '../../api/types';
+import { isLateCheckIn } from '../../utils/stats';
 
 const two = (n: number) => String(n).padStart(2, '0');
 
@@ -65,7 +66,7 @@ export async function loadReportData(dateStr: string, user?: Employee | null): P
 /** Whether a single record satisfies the given report type's filter. */
 export function recordMatches(type: string, r: PunchRecord): boolean {
   const st = String(r.status ?? '').toUpperCase().trim();
-  const isLate = !!r.late_in && durVal(r.late_in) !== '00:00';
+  const isLate = isLateCheckIn(r);
   const isErlOut = !!r.erl_out && durVal(r.erl_out) !== '00:00';
   const isOT = !!r.overtime && durVal(r.overtime) !== '00:00';
   const misPunch = !!r.intime && !r.outtime;

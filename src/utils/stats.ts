@@ -33,17 +33,28 @@ export interface MonthlyStats {
   absent: number; // status A
   leave: number; // status L
   weekOff: number; // status WO / W / H
-  late: number; // present days with a late_in
-  onTime: number; // present days without late_in
+  late: number; // present days checked in after LATE_AFTER
+  onTime: number; // present days checked in by LATE_AFTER
 }
 
 function statusOf(r: PunchRecord): string {
   return String(r.status ?? '').toUpperCase().trim();
 }
 
-function isLate(r: PunchRecord): boolean {
-  const v = String(r.late_in ?? '').trim();
-  return !!v && v !== '00:00:00' && v !== '0' && v !== '00:00';
+/**
+ * Grace time for check-in: checking in up to and including 9:10 is on time,
+ * 9:11 or later is late. Used for every "Late" count in the app (Home,
+ * Attendance, reports) so they always agree.
+ */
+export const LATE_AFTER_MINUTES = 9 * 60 + 10; // 9:10 AM
+
+/** Whether a day's check-in ("HH:mm[:ss]") is after the 9:10 grace time. */
+export function isLateCheckIn(r: PunchRecord): boolean {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(r.intime ?? '').trim());
+  if (!m) return false;
+  const minutes = Number(m[1]) * 60 + Number(m[2]);
+  if (minutes === 0) return false; // "00:00:00" = no check-in
+  return minutes > LATE_AFTER_MINUTES;
 }
 
 /**
@@ -57,7 +68,7 @@ export function monthlyAttendanceStats(records: PunchRecord[]): MonthlyStats {
     const st = statusOf(r);
     if (st === 'P') {
       s.present += 1;
-      if (isLate(r)) s.late += 1;
+      if (isLateCheckIn(r)) s.late += 1;
       else s.onTime += 1;
     } else if (st === 'A') {
       s.absent += 1;

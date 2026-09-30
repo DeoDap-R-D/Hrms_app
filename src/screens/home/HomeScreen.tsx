@@ -9,7 +9,7 @@ import AppDrawer from '../../components/AppDrawer';
 import { ref } from '../../theme/refColors';
 import { useAuth } from '../../context/AuthContext';
 import { displayName } from '../../utils/format';
-import { leaveDaysInMonth } from '../../utils/stats';
+import { leaveDaysInMonth, isLateCheckIn } from '../../utils/stats';
 import * as svc from '../../api/services';
 import type { PunchStatus, PunchRecord, Leave } from '../../api/types';
 
@@ -24,11 +24,6 @@ function hhmm(value?: string | null): string {
   }
   const d = dayjs(value);
   return d.isValid() ? d.format('HH:mm') : '--:--';
-}
-
-function isLateRecord(r: PunchRecord): boolean {
-  const v = String(r.late_in ?? '').trim();
-  return !!v && v !== '00:00:00' && v !== '00:00' && v !== '0';
 }
 
 export default function HomeScreen() {
@@ -73,7 +68,7 @@ export default function HomeScreen() {
       const st = String(r.status ?? '').toUpperCase().trim();
       if (st === 'P') {
         present += 1;
-        if (isLateRecord(r)) late += 1;
+        if (isLateCheckIn(r)) late += 1;
       } else if (st === 'A') {
         absent += 1;
       } else if (st === 'WO' || st === 'W') {

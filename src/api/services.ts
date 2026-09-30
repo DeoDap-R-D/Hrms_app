@@ -1,4 +1,5 @@
 import api, { unwrap } from './client';
+import { APP_VERSION } from '../config/version';
 import type {
   Employee,
   PunchStatus,
@@ -244,6 +245,6 @@ export interface VersionInfo {
 
 /** App version / update info for this platform. */
 export async function appVersion(): Promise<VersionInfo> {
-  const res = await api.get('/version', { params: { platform: 'android' } });
+  const res = await api.get('/version', { params: { platform: 'android', current_version: APP_VERSION } });
   return unwrap<VersionInfo>(res.data);
 }

@@ -6,7 +6,7 @@ import { AppRegistry } from 'react-native';
 import notifee from '@notifee/react-native';
 import App from './App';
 import { name as appName } from './app.json';
-import { handleNotifeeEvent } from './src/utils/notifications';
+import { registerBackgroundPushHandler } from './src/utils/push';
 import applyGlobalFont from './src/utils/applyGlobalFont';
 
 // Apply Poppins (Google Font) to all text app-wide.
@@ -26,11 +26,11 @@ if (!__DEV__ && global.ErrorUtils && typeof global.ErrorUtils.setGlobalHandler =
   });
 }
 
-// Runs in a headless JS task when a reminder is delivered while the app is in
-// the background or fully closed — enforces the "only if punch missing"
-// condition and records the reminder for the in-app Notifications screen.
-notifee.onBackgroundEvent(async ({ type, detail }) => {
-  await handleNotifeeEvent(type, detail);
-});
+// Notifee requires a background handler. Attendance reminders are handled
+// natively (see src/utils/notifications.ts), so there is nothing to do here.
+notifee.onBackgroundEvent(async () => {});
+
+// Firebase push: required background handler (the OS displays the message).
+registerBackgroundPushHandler();
 
 AppRegistry.registerComponent(appName, () => App);

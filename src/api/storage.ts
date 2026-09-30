@@ -4,7 +4,6 @@ const TOKEN_KEY = '@hrms/token';
 const USER_KEY = '@hrms/user';
 const ONBOARDED_KEY = '@hrms/onboarded';
 const LOCAL_NOTIF_KEY = '@hrms/localNotifications';
-const REMINDER_MARK_KEY = '@hrms/reminderMarks';
 
 export async function saveToken(token: string): Promise<void> {
   await AsyncStorage.setItem(TOKEN_KEY, token);
@@ -38,9 +37,9 @@ export async function setOnboardingSeen(): Promise<void> {
 
 /* ------------------------- Local (device) notifications ------------------------- */
 /**
- * Locally-delivered reminders (check-in / check-out) are persisted here so the
- * in-app Notifications screen can show them alongside the server notifications.
- * Written from the Notifee background/foreground event handler.
+ * Reminders delivered by the previous (Notifee-based) reminder system. Kept so
+ * the in-app Notifications screen still lists them; new reminders are recorded
+ * natively (see getDeliveredReminders in utils/notifications).
  */
 export interface LocalNotification {
   id: string;
@@ -60,12 +59,6 @@ export async function getLocalNotifications(): Promise<LocalNotification[]> {
   }
 }
 
-export async function addLocalNotification(item: LocalNotification): Promise<void> {
-  const list = await getLocalNotifications();
-  if (list.some(n => n.id === item.id)) return; // de-dupe (same reminder, same day)
-  await AsyncStorage.setItem(LOCAL_NOTIF_KEY, JSON.stringify([item, ...list].slice(0, 50)));
-}
-
 export async function markLocalNotificationRead(id: string): Promise<void> {
   const list = await getLocalNotifications();
   let changed = false;
@@ -81,25 +74,4 @@ export async function markLocalNotificationRead(id: string): Promise<void> {
 
 export async function clearLocalNotifications(): Promise<void> {
   await AsyncStorage.removeItem(LOCAL_NOTIF_KEY);
-}
-
-/* ------------------------- Reminder delivery marks ------------------------- */
-/**
- * Records the last date (YYYY-MM-DD) each reminder was actually delivered, so a
- * reminder is shown at most once per day even if a duplicate trigger fires.
- */
-export async function getReminderMarks(): Promise<Record<string, string>> {
-  const raw = await AsyncStorage.getItem(REMINDER_MARK_KEY);
-  if (!raw) return {};
-  try {
-    return JSON.parse(raw) as Record<string, string>;
-  } catch {
-    return {};
-  }
-}
-
-export async function markReminderDelivered(id: string, date: string): Promise<void> {
-  const marks = await getReminderMarks();
-  marks[id] = date;
-  await AsyncStorage.setItem(REMINDER_MARK_KEY, JSON.stringify(marks));
 }

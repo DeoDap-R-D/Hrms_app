@@ -8,6 +8,7 @@ import { useTheme, useThemedStyles } from '../../theme';
 import type { Theme } from '../../theme';
 import * as svc from '../../api/services';
 import { getLocalNotifications, markLocalNotificationRead } from '../../api/storage';
+import { getDeliveredReminders, markReminderRead } from '../../utils/notifications';
 import type { NotificationItem } from '../../api/types';
 import { formatDateTime } from '../../utils/format';
 
@@ -31,11 +32,12 @@ export default function NotificationsScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [server, local] = await Promise.all([
+      const [server, local, reminders] = await Promise.all([
         svc.listNotifications().catch(() => [] as NotificationItem[]),
         getLocalNotifications(),
+        getDeliveredReminders(),
       ]);
-      const merged = [...(local as NotificationItem[]), ...server].sort(
+      const merged = [...(reminders as NotificationItem[]), ...(local as NotificationItem[]), ...server].sort(
         (a, b) => timeOf(b) - timeOf(a),
       );
       setItems(merged);
@@ -58,7 +60,8 @@ export default function NotificationsScreen() {
     setItems(prev => prev.map(i => (i.id === n.id ? { ...i, read_at: new Date().toISOString(), is_read: 1 } : i)));
     try {
       if (typeof n.id === 'string') {
-        await markLocalNotificationRead(n.id); // device-local reminder
+        // device-local reminder (native reminders, or older Notifee ones)
+        await Promise.all([markReminderRead(n.id), markLocalNotificationRead(n.id)]);
       } else {
         await svc.markNotificationRead(n.id);
       }
